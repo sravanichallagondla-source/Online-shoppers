@@ -100,9 +100,9 @@ print("Expected n_features:", preprocessor.n_features_in_)
 
 processed_data = preprocessor.transform(input_data)   # this was your line 90
     # Predict
-    prediction = model.predict(processed_data)
+   prediction = model.predict(processed_data)
 
-    probability = float(prediction[0][0])
+      probability = float(prediction[0][0])
 
     if probability >= 0.5:
         st.success("✅ Customer is likely to make a purchase.")
