@@ -108,15 +108,30 @@ if st.button("Predict"):
     # Preprocess
     processed_data = preprocessor.transform(input_data)
  
-    # Predict
-    prediction = model.predict(processed_data)
-    probability = float(prediction[0][0])
- 
-    if probability >= 0.5:
-        st.success("✅ Customer is likely to make a purchase.")
-    else:
-        st.error("❌ Customer is not likely to make a purchase.")
- 
-    st.write(f"Prediction Probability: **{probability:.4f}**")
+   # Feature Engineering (must match training exactly)
+    VISITOR_FREQ_MAP = {
+        "Returning_Visitor": 0.854650,
+        "New_Visitor": 0.138714,
+        "Other": 0.006637
+    }
+    MONTH_FREQ_MAP = {
+        "May": 0.272757, "Nov": 0.244326, "Mar": 0.152397, "Dec": 0.139779,
+        "Oct": 0.044982, "Sep": 0.036706, "Aug": 0.035477, "Jul": 0.035395,
+        "June": 0.023351, "Feb": 0.014830
+    }
 
+    input_data["Total_Pages"] = (
+        input_data["Administrative"] + input_data["Informational"] + input_data["ProductRelated"]
+    )
+    input_data["Total_Duration"] = (
+        input_data["Administrative_Duration"] + input_data["Informational_Duration"] + input_data["ProductRelated_Duration"]
+    )
+    input_data["Engagement_Score"] = (
+        input_data["PageValues"] / (input_data["BounceRates"] + input_data["ExitRates"] + 1e-5)
+    )
+    input_data["VisitorType_Freq"] = input_data["VisitorType"].map(VISITOR_FREQ_MAP)
+    input_data["Month_Freq"] = input_data["Month"].map(MONTH_FREQ_MAP)
+
+    # Preprocess
+    processed_data = preprocessor.transform(input_data)
     
