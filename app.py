@@ -89,6 +89,16 @@ if st.button("Predict"):
     # Preprocess
     processed_data = preprocessor.transform(input_data)
 
+    # ... your existing code that builds input_data ...
+
+# --- ADD THESE DEBUG LINES HERE ---
+print("Input columns:", input_data.columns.tolist())
+print("Input shape:", input_data.shape)
+print("Expected features:", preprocessor.feature_names_in_)
+print("Expected n_features:", preprocessor.n_features_in_)
+# --- END DEBUG LINES ---
+
+processed_data = preprocessor.transform(input_data)   # this was your line 90
     # Predict
     prediction = model.predict(processed_data)
 
