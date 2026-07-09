@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle
 from tensorflow.keras.models import load_model
- 
+
 # -------------------------------
 # Page Configuration
 # -------------------------------
@@ -12,24 +12,25 @@ st.set_page_config(
     page_icon="🛒",
     layout="centered"
 )
- 
+
 # -------------------------------
-# Load Model
+# Load Model & Preprocessor
 # -------------------------------
-model = load_model("online_shoppers_model.keras")
- 
-# -------------------------------
-# Load Preprocessor
-# -------------------------------
-with open("preprocessor.pkl", "rb") as f:
-    preprocessor = pickle.load(f)
- 
+@st.cache_resource
+def load_artifacts():
+    model = load_model("online_shoppers_model.keras")
+    with open("preprocessor.pkl", "rb") as f:
+        preprocessor = pickle.load(f)
+    return model, preprocessor
+
+model, preprocessor = load_artifacts()
+
 # -------------------------------
 # Title
 # -------------------------------
 st.title("🛒 Online Shopping Intention Prediction")
 st.write("Enter the customer details below.")
- 
+
 # -------------------------------
 # Input Fields
 # -------------------------------
@@ -56,16 +57,12 @@ VisitorType = st.selectbox(
     ['Returning_Visitor', 'New_Visitor', 'Other']
 )
 Weekend = st.selectbox("Weekend", ["False", "True"])
- 
+
 # -------------------------------
 # Prediction
 # -------------------------------
 if st.button("Predict"):
- 
-    # Build input as a DataFrame with correct column names
-    # NOTE: these column names MUST exactly match the columns the
-    # preprocessor was fit on (check preprocessor.feature_names_in_
-    # if unsure, e.g. by running it once locally and printing it).
+
     columns = [
         "Administrative", "Administrative_Duration",
         "Informational", "Informational_Duration",
@@ -74,7 +71,7 @@ if st.button("Predict"):
         "Month", "OperatingSystems", "Browser", "Region",
         "TrafficType", "VisitorType", "Weekend"
     ]
- 
+
     row = [[
         Administrative,
         Administrative_Duration,
@@ -94,21 +91,12 @@ if st.button("Predict"):
         VisitorType,
         Weekend == "True"
     ]]
- 
+
     input_data = pd.DataFrame(row, columns=columns)
- 
-    # Debug info (safe now, since input_data is a DataFrame)
-    st.write("Input columns:", input_data.columns.tolist())
-    st.write("Input shape:", input_data.shape)
-    if hasattr(preprocessor, "feature_names_in_"):
-        st.write("Expected features:", list(preprocessor.feature_names_in_))
-    if hasattr(preprocessor, "n_features_in_"):
-        st.write("Expected n_features:", preprocessor.n_features_in_)
- 
-    # Preprocess
-    processed_data = preprocessor.transform(input_data)
- 
-   # Feature Engineering (must match training exactly)
+
+    # -------------------------------
+    # Feature Engineering (must match training exactly)
+    # -------------------------------
     VISITOR_FREQ_MAP = {
         "Returning_Visitor": 0.854650,
         "New_Visitor": 0.138714,
@@ -132,6 +120,28 @@ if st.button("Predict"):
     input_data["VisitorType_Freq"] = input_data["VisitorType"].map(VISITOR_FREQ_MAP)
     input_data["Month_Freq"] = input_data["Month"].map(MONTH_FREQ_MAP)
 
-    # Preprocess
-    processed_data = preprocessor.transform(input_data)
-    
+    # -------------------------------
+    # Debug info (now reflects the full, final feature set)
+    # -------------------------------
+    st.write("Input columns:", input_data.columns.tolist())
+    st.write("Input shape:", input_data.shape)
+    if hasattr(preprocessor, "feature_names_in_"):
+        st.write("Expected features:", list(preprocessor.feature_names_in_))
+    if hasattr(preprocessor, "n_features_in_"):
+        st.write("Expected n_features:", preprocessor.n_features_in_)
+
+    # -------------------------------
+    # Preprocess (single call, after all features exist)
+    # -------------------------------
+    try:
+        processed_data = preprocessor.transform(input_data)
+    except Exception as e:
+        st.error(f"Preprocessing failed: {e}")
+        st.stop()
+
+    # -------------------------------
+    # Predict
+    # -------------------------------
+    prediction = model.predict(processed_data)
+    probability = float(prediction[0][0])  # adjust index if multi-output
+    predicted_class = "Will Purchase (Revenue = True)" if probability >= 0.5
